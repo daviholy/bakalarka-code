@@ -1,5 +1,6 @@
 from datasetCreator import DatasetCreator
 from neuralNetwork import NeuralNetwork
+from torchinfo import summary
 from torch import save
 import argparse, torch
 
@@ -17,15 +18,26 @@ if __name__ == "__main__":
     parser.add_argument('-b', '--batchsize', type=int, default=64,
                         help="specify batch size")
     parser.add_argument('-e', '--epochs', type=int, default=5,
-                        help="specify number of epochs")
-    parser.add_argument('-l', '--lr', type=float, default=0.02,
-                        help="specify learning rate") 
+                        help="number of epochs")
+    parser.add_argument('-l', '--lr', type=float, default=0.002,
+                        help="learning rate") 
+    parser.add_argument('-hl', '--hidden_layers', type=int, default=4,
+                        help="number of hidden layers")
+    parser.add_argument('-n', '--neurons_per_layer', type=int, default=4,
+                        help="number of neurons")
+    parser.add_argument('-lm', '--load-model', type=str,
+                        help="file of saved model to load")
                            
     args = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(device)
-    dataset = DatasetCreator(args.directory, workers=args.workers, batch_size=args.batchsize)
-    print("data loaded")
-    model = NeuralNetwork(device=device)
-    model.train_model(dataset, save=args.save, epochs=args.epochs, learning_rate=args.lr)
+    print(f"device: {device}")
+    dataset = DatasetCreator(args.directory, workers=args.workers, device=device)
+    print("data loaded\n")
+
+    model = NeuralNetwork(35,device=device, neurons_per_layer=args.neurons_per_layer, hidden_layers=args.hidden_layers)
+    if args.load_model:
+        model.load_state_dict(torch.load(args.load_model, map_location=torch.device('cpu')))
+    model.to(device)
+
+    model.train_model(dataset, save=args.save, epochs=args.epochs, learning_rate=args.lr, batch_size=args.batchsize)
     save(model.state_dict(), "model.pth")
