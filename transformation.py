@@ -2,19 +2,19 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
-from sklearn.mixture import GaussianMixture
-import numpy as np
 
 from datasetCreator import DatasetCreator
 from scipy.stats import kendalltau
 
 def transform_data(data, NaN=False):
-    std = StandardScaler().fit_transform(data.to_numpy())
-    data = pd.DataFrame(std, columns=data.keys())
+    normal = data[["time","en_total","pe_total","be_total","pressure","s_xx","s_xy","s_xz","s_yx","s_yy","s_yz","s_zx","s_zy","s_zz","temperature","bndlen_av","bndlen_max","bndlen_min","len"]]
+    std = MinMaxScaler().fit_transform(normal.to_numpy())
+    normal = pd.DataFrame(std, columns=normal.keys())
+    normal["f_a"] = data["f_a"]
 
-    en_total_gm = GaussianMixture(n_components=7 )
+    """en_total_gm = GaussianMixture(n_components=7 )
     en_total_gm.fit(data["be_total"].values.reshape(-1,1))
     en_target = en_total_gm.predict(data["pe_total"].values.reshape(-1,1))
 
@@ -40,8 +40,9 @@ def transform_data(data, NaN=False):
     bndlen_av_target = bndlen_av_gm.predict(data["bndlen_av"].values.reshape(-1,1))
 
     for i in range(len(np.unique(bndlen_av_target))):
-        data[f"bndlen_av_{i}"] = np.where(bndlen_av_target == i, data["bndlen_av"], np.NaN if NaN else 0)
-    return data
+        data[f"bndlen_av_{i}"] = np.where(bndlen_av_target == i, data["bndlen_av"], np.NaN if NaN else 0) """
+    return normal
+
 if __name__ == "__main__":
     data, labels = DatasetCreator.read_dataset("./dataset")
     data = transform_data(data, NaN=True)
@@ -50,9 +51,9 @@ if __name__ == "__main__":
     #    sns.histplot(data=data, x=key, kde=True )
 
     f, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 10))
-    cols = ["en_total","pe_total","be_total","pressure","s_xx","s_xy","s_xz","s_yx","s_yy","s_yz","s_zx","s_zy","s_zz","temperature","bndlen_av","bndlen_max","bndlen_min"]
+    #cols = ["time","en_total","pe_total","be_total","pressure","s_xx","s_xy","s_xz","s_yx","s_yy","s_yz","s_zx","s_zy","s_zz","temperature","bndlen_av","bndlen_max","bndlen_min","f_a"]
     ax.set_title("Correlation Matrix", fontsize=16)
-    sns.heatmap(data[cols].corr(), vmin=-1, vmax=1, cmap='coolwarm', annot=True)
+    sns.heatmap(data.corr(method="kendall"), vmin=-1, vmax=1, cmap='coolwarm', annot=True)
     plt.show()
 
 

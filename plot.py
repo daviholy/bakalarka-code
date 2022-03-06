@@ -60,6 +60,8 @@ if __name__ == "__main__":
 
     if args.plot_matrix:
         plt.switch_backend('Agg')
-        plt = sns.pairplot(DatasetCreator.read_dataset(args.directory), hue='label', kind='hist', palette={0:sns.color_palette("Paired")[0],1:sns.color_palette("Paired")[5]})
+        data = DatasetCreator.read_dataset(args.directory)
+        data[0]["label"] = data[1]
+        plt = sns.pairplot(data[0], hue='label', kind='hist', palette={0:sns.color_palette("Paired")[0],1:sns.color_palette("Paired")[5]})
         plt.savefig("./matrix.png")
     

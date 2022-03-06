@@ -3,7 +3,7 @@ from torch import nn,round
 from torchsummary import summary
 import torch, csv, os
 import numpy as np
-from torch.optim import Adam
+from torch.optim import RAdam
 from datasetCreator import DatasetCreator
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.metrics import fbeta_score
@@ -65,8 +65,6 @@ class NeuralNetwork(nn.Module):
 
     def train_model(self, datasetCreator, epochs = 5, learning_rate=0.02, batch_size=64 ,save="./"):
 
-        
-
 
         def check_files(train_file,test_file):
             if not os.path.isfile(train_file):
@@ -94,14 +92,14 @@ class NeuralNetwork(nn.Module):
 
         check_files(f"{save}train.csv", f"{save}test.csv")
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = Adam(self.parameters(), lr=learning_rate)
+        optimizer = RAdam(self.parameters(), lr=learning_rate)
         train_loader = datasetCreator.loader_train(batch_size=batch_size)
         train_eval_loader = datasetCreator.loader_evaluate_train(batch_size=batch_size)
         test_eval_loader = datasetCreator.loader_evaluate_test(batch_size=batch_size)
 
-        self.train()
 
         for epoch in range(epochs):
+            self.train()
             loss_epoch = 0
             #train
             for i,(data,labels) in enumerate(train_loader):
@@ -120,6 +118,7 @@ class NeuralNetwork(nn.Module):
                     print(f"{i}/{len(train_loader)}")
 
             #evaluation
+            self.eval()
             print(f"Epoch: {epoch+1+0:03}")
             print("train")
             self.validation(train_eval_loader,f"{save}train.csv",Print=True,write=True)

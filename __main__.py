@@ -2,6 +2,7 @@ from datasetCreator import DatasetCreator
 from neuralNetwork import NeuralNetwork
 from torchinfo import summary
 from torch import save
+from os.path import exists
 import argparse, torch
 
 DATASET="/home/david/skola/bakalarka-fortran/new_dataset/"
@@ -25,16 +26,19 @@ if __name__ == "__main__":
                         help="number of hidden layers")
     parser.add_argument('-n', '--neurons_per_layer', type=int, default=4,
                         help="number of neurons")
+    parser.add_argument('-sp','--split',type=str,default="index_split.json",
+                        help="file name of json file which contains splited indexes of dataset")
     parser.add_argument('-lm', '--load-model', type=str,
                         help="file of saved model to load")
                            
     args = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    load = True if exists(args.split) else False
     print(f"device: {device}")
-    dataset = DatasetCreator(args.directory, workers=args.workers, device=device)
+    dataset = DatasetCreator(args.directory,load=load ,workers=args.workers, device=device)
     print("data loaded\n")
 
-    model = NeuralNetwork(35,device=device, neurons_per_layer=args.neurons_per_layer, hidden_layers=args.hidden_layers)
+    model = NeuralNetwork(num_of_features= len(DatasetCreator.CHOSEN_COLUMNS),device=device, neurons_per_layer=args.neurons_per_layer, hidden_layers=args.hidden_layers)
     if args.load_model:
         model.load_state_dict(torch.load(args.load_model, map_location=torch.device('cpu')))
     model.to(device)
