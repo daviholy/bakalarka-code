@@ -10,10 +10,18 @@ from sklearn.metrics import fbeta_score
 
 class NeuralNetwork(nn.Module):
     
-    def __init__(self,num_of_features, device ="cpu", neurons_per_layer=300, hidden_layers=5, hidden_activations = nn.LeakyReLU) -> None:
+    def __init__(self,num_of_features, device ="cpu",sequence_channels=4, sequence_layers=3,kernel=10, neurons_per_layer=300, hidden_layers=5, hidden_activations = nn.LeakyReLU, batch_size=256) -> None:
         super().__init__()
         self.device = device
         self.hidden_layers = hidden_layers
+        self.sequence_layers = sequence_layers
+        #convolution layers
+        self.input_convolution = nn.Sequential(nn.Conv1d(in_channels=num_of_features,out_channels=num_of_features*sequence_channels,kernel_size=kernel))
+        for i in range(sequence_layers - 1):
+            setattr(self,f"sequence_layer_{i}",nn.Sequential(nn.Conv1d(in_channels=num_of_features*sequence_channels,out_channels=num_of_features*sequence_channels,kernel_size=kernel)))
+        #global average pooling and then flatten into 1d
+        self.output_convolution= nn.Sequential(nn.AdaptiveAvgPool1d(1),nn.Flatten())      
+
         #fully connected layers for classification
         self.input_layer = nn.Sequential(nn.BatchNorm1d(num_of_features).to(device), nn.Linear(num_of_features,neurons_per_layer).to(device))
         for i in range(hidden_layers):
@@ -23,11 +31,18 @@ class NeuralNetwork(nn.Module):
 
 
     def forward(self, x):
+        """x = x.unsqueeze(0)
+
+        x= self.input_convolution(x)
+        for i in range(self.sequence_layers):
+            x = getattr(self,f"sequence_layer_{i}")(x)
+        x = self.output_convolution(x)"""
+
         x = self.input_layer(x)
         for i in range(self.hidden_layers):
             x = getattr(self,f"hidden_layer_{i}")(x)
         x = self.layer_output(x).squeeze(1)
-        return(self.return_sigmoid(x) if self.training else x)
+        return(x if self.training else self.return_sigmoid(x))
 
 
     def validation(self,loader, file=None, write= False, Print=False):
