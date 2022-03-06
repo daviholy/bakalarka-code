@@ -14,6 +14,7 @@ class NeuralNetwork(nn.Module):
         super().__init__()
         self.device = device
         self.hidden_layers = hidden_layers
+        #fully connected layers for classification
         self.input_layer = nn.Sequential(nn.BatchNorm1d(num_of_features).to(device), nn.Linear(num_of_features,neurons_per_layer).to(device))
         for i in range(hidden_layers):
             setattr(self,f"hidden_layer_{i}",nn.Sequential(nn.Linear(neurons_per_layer, neurons_per_layer).to(device), nn.BatchNorm1d(neurons_per_layer).to(device), hidden_activations().to(device)))
@@ -99,8 +100,8 @@ class NeuralNetwork(nn.Module):
 
 
         for epoch in range(epochs):
-            self.train()
             loss_epoch = 0
+            self.train()
             #train
             for i,(data,labels) in enumerate(train_loader):
                 optimizer.zero_grad()

@@ -15,7 +15,7 @@ class DatasetCreator():
     """
 
     CSV_HEADER= ["loss","f2","acc","PR_AUC","ROC"]
-    CHOSEN_COLUMNS = ["time","en_total","temperature","s_xx","s_xy","s_xz","s_yy","s_yz","s_zz","len","f_a"]
+    CHOSEN_COLUMNS = ["time","temperature","s_xx","s_xy","s_xz","s_yy","s_yz","s_zz","f_a"]
     @staticmethod
     def read_dataset(dataset):
         values ={"time": [], "en_total": [], "pe_total": [], "be_total": [], "pressure": [], "s_xx": [], "s_xy": [], "s_xz": [], "s_yx": [], "s_yy": [],
@@ -96,7 +96,7 @@ class DatasetCreator():
         self._workers = workers
         self._device = device
         self.data, labels = self.read_dataset(dataset)
-        #self.data = transform_data(self.data)
+        self.data = transform_data(self.data)
         if load:
             with open("index_split.json", "r") as f:
                 dict = json.load(f)
@@ -123,7 +123,7 @@ class DatasetCreator():
         Returns:
             iter: iterator which will create batches of data.
         """
-        return DataLoader(self._dataframe_train,batch_size= batch_size, sampler=RandomSampler(data_source=self._dataframe_train), num_workers=self._workers)
+        return DataLoader(self._dataframe_train,batch_size= batch_size, sampler=SequentialSampler(data_source=self._dataframe_train), num_workers=self._workers)
 
 
     def loader_evaluate_train(self, batch_size=64):
