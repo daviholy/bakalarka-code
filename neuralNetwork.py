@@ -3,6 +3,7 @@ from torch import nn,round
 from torchsummary import summary
 import torch, csv, os
 import numpy as np
+from math import floor
 from torch.optim import RAdam
 from datasetCreator import DatasetCreator
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -10,20 +11,21 @@ from sklearn.metrics import fbeta_score
 
 class NeuralNetwork(nn.Module):
     
-    def __init__(self,num_of_features, device ="cpu",sequence_channels=4, sequence_layers=3,kernel=10, neurons_per_layer=300, hidden_layers=5, hidden_activations = nn.LeakyReLU, batch_size=256) -> None:
+    def __init__(self,num_of_features, device ="cpu",sequence_channels=4, sequence_layers=3,stride=1,kernel=5, neurons_per_layer=300, hidden_layers=5, hidden_activations = nn.LeakyReLU, batch_size=256) -> None:
+
         super().__init__()
         self.device = device
         self.hidden_layers = hidden_layers
-        self.sequence_layers = sequence_layers
+        self.sequence_layers = sequence_layers - 1
         #convolution layers
-        self.input_convolution = nn.Sequential(nn.Conv1d(in_channels=num_of_features,out_channels=num_of_features*sequence_channels,kernel_size=kernel))
+        self.input_convolution = nn.Sequential(nn.Conv1d(in_channels=num_of_features,out_channels=num_of_features*sequence_channels,kernel_size=kernel), nn.BatchNorm1d(num_of_features*sequence_channels).to(device), hidden_activations().to(device))
         for i in range(sequence_layers - 1):
             setattr(self,f"sequence_layer_{i}",nn.Sequential(nn.Conv1d(in_channels=num_of_features*sequence_channels,out_channels=num_of_features*sequence_channels,kernel_size=kernel)))
         #global average pooling and then flatten into 1d
         self.output_convolution= nn.Sequential(nn.AdaptiveAvgPool1d(1),nn.Flatten())      
 
         #fully connected layers for classification
-        self.input_layer = nn.Sequential(nn.BatchNorm1d(num_of_features).to(device), nn.Linear(num_of_features,neurons_per_layer).to(device))
+        self.input_layer = nn.Sequential(nn.BatchNorm1d(num_of_features*sequence_channels).to(device), nn.Linear(num_of_features*sequence_channels,neurons_per_layer).to(device))
         for i in range(hidden_layers):
             setattr(self,f"hidden_layer_{i}",nn.Sequential(nn.Linear(neurons_per_layer, neurons_per_layer).to(device), nn.BatchNorm1d(neurons_per_layer).to(device), hidden_activations().to(device)))
         self.layer_output = nn.Sequential(nn.Linear(neurons_per_layer, 1).to(device))
@@ -31,12 +33,11 @@ class NeuralNetwork(nn.Module):
 
 
     def forward(self, x):
-        """x = x.unsqueeze(0)
 
         x= self.input_convolution(x)
         for i in range(self.sequence_layers):
             x = getattr(self,f"sequence_layer_{i}")(x)
-        x = self.output_convolution(x)"""
+        x = self.output_convolution(x)
 
         x = self.input_layer(x)
         for i in range(self.hidden_layers):
@@ -66,7 +67,6 @@ class NeuralNetwork(nn.Module):
 
                 loss_epoch+=criterion(output,labels).item()
 
-        output_dataset = self.return_sigmoid(output_dataset)
         res = {"loss": loss_epoch/len(loader), "f2": fbeta_score(labels_dataset.detach().numpy(),(output_dataset > binary_threshold).detach().numpy(), beta=2),"acc": acc(output_dataset , labels_dataset), 
         "PR_AUC": average_precision_score(labels_dataset.detach().numpy(), output_dataset.detach().numpy()), "ROC" : roc_auc_score(labels_dataset.cpu().numpy(), output_dataset.detach().numpy())}
 
@@ -130,17 +130,18 @@ class NeuralNetwork(nn.Module):
 
                 loss_epoch += loss.item()
 
-                if i%100 ==0:
-                    print(f"{i}/{len(train_loader)}")
+                # if i%100 ==0:
+                    # print(f"{i}/{len(train_loader)}")
 
             #evaluation
-            self.eval()
-            print(f"Epoch: {epoch+1+0:03}")
-            print("train")
-            self.validation(train_eval_loader,f"{save}train.csv",Print=True,write=True)
-            print("test")
-            self.validation(test_eval_loader,f"{save}test.csv",Print=True,write=True)
-            print()
+            if (epoch + 1)% 10 == 0:
+                self.eval()
+                print(f"Epoch: {epoch+1+0:03}")
+                print("train")
+                self.validation(train_eval_loader,f"{save}train.csv",Print=True,write=True)
+                print("test")
+                self.validation(test_eval_loader,f"{save}test.csv",Print=True,write=True)
+                print()
         return
 
 
